@@ -1,0 +1,45 @@
+{
+  "appId": "com.typesykiller.app",
+  "productName": "Typesy Killer",
+  "directories": {
+    "output": "dist"
+  },
+  "files": ["out/**/*", "electron.js", "preload.js", "node_modules/**/*"],
+  "mac": {
+    "category": "public.app-category.education",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "icon": "assets/icon.icns"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64", "ia32"]
+      }
+    ],
+    "icon": "assets/icon.ico"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icon.png",
+    "category": "Education"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}
