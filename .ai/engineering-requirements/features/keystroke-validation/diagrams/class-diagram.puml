@@ -1,0 +1,242 @@
+@startuml Keystroke Validation Class Diagram
+!theme plain
+skinparam linetype ortho
+
+title Keystroke Validation - Class Diagram
+
+package "Presentation Layer" {
+  class TypingInterface {
+    - session: TypingSession
+    - validator: InputValidator
+    - state: UIState
+    --
+    + handleKeyPress(key: string): void
+    + handleBackspace(): void
+    + updateDisplay(): void
+    + showFeedback(type: FeedbackType): void
+  }
+}
+
+package "Business Logic Layer" {
+  
+  class TypingSession {
+    - id: string
+    - context: TypingContext
+    - state: SessionState
+    - observers: Set<TypingEventHandler>
+    --
+    + processKeystroke(key: string): TypingEvent
+    + start(): void
+    + pause(): void
+    + resume(): void
+    + complete(): SessionResult
+    + subscribe(handler): () => void
+    + getMetrics(): Metrics
+  }
+  
+  class InputValidator {
+    - strategy: ValidationStrategy
+    - state: ValidationState
+    --
+    + validateKeystroke(key, context): ValidationResult
+    + allowBackspace(context): boolean
+    + isSessionComplete(context): boolean
+    + getExpectedChar(context): string
+  }
+  
+  interface ValidationStrategy {
+    + name: string
+    --
+    + validate(input, expected, position): ValidationResult
+    + allowsBackspace(position): boolean
+    + getCompletionCriteria(): CompletionCriteria
+  }
+  
+  class StrictValidationStrategy {
+    + name = "strict"
+    --
+    + validate()
+    + allowsBackspace()
+    + getCompletionCriteria()
+  }
+  
+  class LenientValidationStrategy {
+    + name = "lenient"
+    --
+    + validate()
+    + allowsBackspace()
+    + getCompletionCriteria()
+  }
+  
+  class WrongKeyTracker {
+    - errorMap: Map<string, KeyErrorStats>
+    - errors: TypingError[]
+    --
+    + recordError(error: TypingError): void
+    + getErrorFrequency(key: string): number
+    + getMostProblematicKeys(limit): string[]
+    + identifyWeakPatterns(): KeyCombination[]
+    + getKeyErrorStats(key): KeyErrorStats
+    + reset(): void
+  }
+  
+  class KeystrokeTracker {
+    - keystrokes: KeystrokeEvent[]
+    - timingCache: TimingStats
+    --
+    + record(event: KeystrokeEvent): void
+    + getKeystrokes(): KeystrokeEvent[]
+    + getTimingStats(): TimingStats
+    + analyzeRhythm(): RhythmPattern
+    + detectFatigue(): number
+  }
+  
+  class MetricsCalculator {
+    - wpmCache: Map<string, number>
+    - accuracyCache: Map<string, number>
+    --
+    + calculateWPM(keystrokes): number
+    + calculateAccuracy(keystrokes): number
+    + calculateMetrics(session): Metrics
+    + calculateFinalMetrics(session): Metrics
+  }
+  
+  class TypingSessionFacade {
+    - validator: InputValidator
+    - calculator: MetricsCalculator
+    - keystrokeTracker: KeystrokeTracker
+    - wrongKeyTracker: WrongKeyTracker
+    - sessionManager: SessionManager
+    --
+    + startSession(config): TypingSession
+    + processKeystroke(session, key): TypingEvent
+    + endSession(session): SessionResult
+    + pauseSession(session): void
+    + resumeSession(session): void
+  }
+}
+
+package "Data Layer" {
+  class TypingContext {
+    + expectedText: string
+    + currentPosition: number
+    + userInput: string
+    + startTime: number
+    + lastKeystrokeTime: number
+    + keystrokes: KeystrokeEvent[]
+    + errors: TypingError[]
+    + allowBackspace: boolean
+    + validationStrategy: ValidationStrategy
+  }
+  
+  class ValidationResult {
+    + isValid: boolean
+    + expectedChar: string
+    + actualChar: string
+    + position: number
+    + timestamp: number
+    + action: ValidationAction
+    + metadata: object
+  }
+  
+  class KeystrokeEvent {
+    + key: string
+    + keyCode: number
+    + timestamp: number
+    + expected: string
+    + correct: boolean
+    + position: number
+    + dwellTime: number
+    + interKeyInterval: number
+    + flightTime: number
+  }
+  
+  class TypingError {
+    + position: number
+    + expectedChar: string
+    + actualChar: string
+    + timestamp: number
+    + attemptNumber: number
+    + isRecoverable: boolean
+    + errorType: ErrorType
+    + adjacentKey: boolean
+    + sameFingerKey: boolean
+  }
+  
+  class Metrics {
+    + wpm: number
+    + rawWPM: number
+    + netWPM: number
+    + accuracy: number
+    + errorRate: number
+    + charactersTyped: number
+    + correctCharacters: number
+    + incorrectCharacters: number
+    + totalCharacters: number
+    + elapsedTime: number
+    + timeRemaining: number
+    + consistency: number
+  }
+}
+
+' Relationships - Presentation Layer
+TypingInterface --> TypingSession : uses
+TypingInterface --> InputValidator : uses
+
+' Relationships - Business Logic
+TypingSession *-- TypingContext : contains
+TypingSession ..> ValidationResult : produces
+TypingSession ..> Metrics : produces
+
+InputValidator --> ValidationStrategy : uses
+ValidationStrategy <|.. StrictValidationStrategy : implements
+ValidationStrategy <|.. LenientValidationStrategy : implements
+
+TypingSessionFacade --> InputValidator : coordinates
+TypingSessionFacade --> MetricsCalculator : coordinates
+TypingSessionFacade --> KeystrokeTracker : coordinates
+TypingSessionFacade --> WrongKeyTracker : coordinates
+
+WrongKeyTracker ..> TypingError : tracks
+KeystrokeTracker ..> KeystrokeEvent : tracks
+MetricsCalculator ..> Metrics : calculates
+
+' Relationships - Data Flow
+ValidationResult --> ValidationAction : specifies
+TypingContext --> KeystrokeEvent : contains
+TypingContext --> TypingError : contains
+TypingContext --> ValidationStrategy : uses
+
+note top of TypingSessionFacade
+  <b>Facade Pattern</b>
+  Simplifies API for UI components.
+  Coordinates multiple subsystems.
+end note
+
+note right of ValidationStrategy
+  <b>Strategy Pattern</b>
+  Different validation rules
+  for different practice modes:
+  - Strict (Lesson mode)
+  - Lenient (Practice mode)
+  - None (Free typing)
+end note
+
+note bottom of WrongKeyTracker
+  <b>Observer Pattern</b>
+  Tracks errors independently
+  without coupling to validation logic.
+end note
+
+note as N1
+  <b>Performance Critical Path</b>
+  TypingInterface → InputValidator
+  Must execute in <2ms total
+  
+  <b>Cold Path (Debounced)</b>
+  Save operations, analytics,
+  cloud sync (500ms debounce)
+end note
+
+@enduml
+

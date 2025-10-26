@@ -1,0 +1,213 @@
+@startuml Sequence: Wrong Keystroke (Error Path)
+!theme plain
+skinparam sequenceMessageAlign center
+
+title Keystroke Validation - Wrong Keystroke Flow (Error Path)
+
+actor User
+participant "TypingInterface\n(UI Component)" as UI
+participant "TypingSession" as Session
+participant "InputValidator" as Validator
+participant "ValidationStrategy" as Strategy
+participant "WrongKeyTracker" as WTracker
+participant "KeystrokeTracker" as KTracker
+participant "MetricsCalculator" as Calculator
+participant "FeedbackSystem" as Feedback
+participant "Observers" as Observers
+
+== User Types Wrong Character ==
+
+User -> UI: keyPress('g')
+note right
+  Expected: 'h'
+  Actual: 'g'
+  timestamp = performance.now()
+end note
+
+activate UI
+UI -> Session: processKeystroke('g')
+activate Session
+
+Session -> Session: getCurrentContext()
+note right
+  <b>Context:</b>
+  - expectedText: "hello"
+  - currentPosition: 0
+  - expectedChar: 'h'
+  - actualChar: 'g'
+end note
+
+Session -> Validator: validateKeystroke('g', context)
+activate Validator
+note right of Validator: <b>HOT PATH: <0.1ms</b>
+
+Validator -> Strategy: validate('g', 'h', 0)
+activate Strategy
+Strategy -> Strategy: compareCharacters()
+note right: 'g' != 'h' ❌
+Strategy --> Validator: { isValid: false, action: STAY }
+deactivate Strategy
+
+Validator -> Validator: buildValidationResult()
+Validator --> Session: ValidationResult\n{ isValid: false, action: STAY }
+deactivate Validator
+
+== Log Error ==
+
+Session -> Session: buildTypingError()
+note right
+  <b>TypingError:</b>
+  - position: 0
+  - expectedChar: 'h'
+  - actualChar: 'g'
+  - timestamp: 1234.56
+  - attemptNumber: 1
+  - errorType: ADJACENT_KEY
+  - adjacentKey: true
+end note
+
+Session -> WTracker: recordError(error)
+activate WTracker
+note right of WTracker: <b>Error Analysis: <0.5ms</b>
+
+WTracker -> WTracker: updateErrorMap('h')
+note right
+  Track that user typed 'g'
+  when 'h' was expected.
+  
+  Common mistake pattern:
+  h → g (adjacent key)
+end note
+
+WTracker -> WTracker: incrementAttemptCount('h')
+WTracker -> WTracker: identifyErrorType()
+note right
+  Error type: ADJACENT_KEY
+  (g is next to h on keyboard)
+end note
+
+WTracker --> Session: void
+deactivate WTracker
+
+== Record Keystroke (Incorrect) ==
+
+Session -> KTracker: record(keystrokeEvent)
+activate KTracker
+note right
+  <b>Keystroke Event:</b>
+  - key: 'g'
+  - correct: false ❌
+  - position: 0
+  - dwellTime: 52ms
+  - interKeyInterval: 135ms
+end note
+KTracker --> Session: void
+deactivate KTracker
+
+== Calculate Metrics (With Error) ==
+
+Session -> Calculator: calculateMetrics(session)
+activate Calculator
+note right of Calculator: <b>Memoized: <0.5ms</b>
+
+Calculator -> Calculator: calculateWPM(keystrokes)
+Calculator -> Calculator: calculateAccuracy(keystrokes)
+note right
+  accuracy = (0 correct / 1 total) * 100
+  accuracy = 0%
+end note
+
+Calculator --> Session: Metrics\n{ wpm: 0, accuracy: 0, errorCount: 1 }
+deactivate Calculator
+
+== State Remains Unchanged ==
+
+Session -> Session: maintainPosition()
+note right
+  <b>State Unchanged:</b>
+  - currentPosition: 0 (stays at 0)
+  - expectedChar: 'h' (still 'h')
+  - userInput: '' (not added)
+  
+  <b>No forward progress!</b>
+end note
+
+Session -> Session: buildTypingEvent()
+
+== Notify Observers ==
+
+Session -> Observers: notify(event)
+activate Observers
+note right
+  <b>TypingEvent:</b>
+  - type: ERROR
+  - validation: { isValid: false }
+  - metrics: { errorCount: 1 }
+  - timestamp: 1234.56
+end note
+Observers --> Session: void
+deactivate Observers
+
+Session --> UI: TypingEvent
+deactivate Session
+
+== Provide Error Feedback ==
+
+UI -> Feedback: showError(error)
+activate Feedback
+
+Feedback -> Feedback: visualFeedback()
+note right
+  - Red highlight on 'h'
+  - Shake animation
+  - Error indicator
+end note
+
+Feedback -> Feedback: audioFeedback()
+note right
+  Optional: Play error sound
+  (if user has audio enabled)
+end note
+
+Feedback --> UI: void
+deactivate Feedback
+
+== Update Display ==
+
+UI -> UI: highlightError()
+note right
+  Visual cues:
+  - Cursor stays at position 0
+  - 'h' highlighted in red
+  - Error counter: 1
+  - Accuracy drops to 0%
+end note
+
+UI -> UI: updateMetrics()
+note right
+  Display:
+  - WPM: 0
+  - Accuracy: 0%
+  - Errors: 1
+  - Progress: 0/5 (blocked)
+end note
+
+UI --> User: Error feedback
+deactivate UI
+
+note over User, Observers
+  <b>Total Latency: <2ms</b>
+  
+  Breakdown:
+  - Validation: <0.1ms
+  - Error logging: <0.5ms
+  - Keystroke recording: <0.3ms
+  - Metrics calculation: <0.5ms
+  - Feedback: <0.5ms
+  - UI update: <1ms
+  
+  <b>User must type correct key to proceed!</b>
+end note
+
+@enduml
+

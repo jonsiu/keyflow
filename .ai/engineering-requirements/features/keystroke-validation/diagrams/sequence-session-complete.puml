@@ -1,0 +1,270 @@
+@startuml Sequence: Session Complete
+!theme plain
+skinparam sequenceMessageAlign center
+
+title Keystroke Validation - Session Complete Flow
+
+actor User
+participant "TypingInterface\n(UI Component)" as UI
+participant "TypingSession" as Session
+participant "InputValidator" as Validator
+participant "MetricsCalculator" as Calculator
+participant "WrongKeyTracker" as WTracker
+participant "KeystrokeTracker" as KTracker
+participant "AnalyticsEngine" as Analytics
+participant "SessionRepository" as Repository
+participant "Observers" as Observers
+
+== User Types Last Character ==
+
+User -> UI: keyPress('o')
+note right
+  Last character in "hello"
+end note
+
+activate UI
+UI -> Session: processKeystroke('o')
+activate Session
+
+Session -> Validator: validateKeystroke('o', context)
+activate Validator
+Validator --> Session: ValidationResult\n{ isValid: true, action: ADVANCE }
+deactivate Validator
+
+Session -> Session: advancePosition()
+note right
+  currentPosition: 4 → 5
+  userInput: "hell" → "hello"
+end note
+
+Session -> Session: checkCompletion()
+note right
+  position (5) == text.length (5)
+  All characters typed!
+end note
+
+Session -> Validator: isSessionComplete(context)
+activate Validator
+Validator -> Validator: checkCriteria()
+note right
+  ✓ All characters typed
+  ✓ Accuracy meets threshold
+  ✓ Strategy completion rules met
+end note
+Validator --> Session: true
+deactivate Validator
+
+== Calculate Final Metrics ==
+
+Session -> Calculator: calculateFinalMetrics(session)
+activate Calculator
+note right of Calculator: <b>Comprehensive: ~50ms</b>
+
+Calculator -> Calculator: calculateWPM()
+Calculator -> Calculator: calculateAccuracy()
+Calculator -> Calculator: calculateConsistency()
+Calculator -> Calculator: calculateDetailedStats()
+
+note right
+  <b>Final Metrics:</b>
+  - WPM: 45
+  - Raw WPM: 48
+  - Net WPM: 43
+  - Accuracy: 96%
+  - Consistency: 85%
+  - Total time: 6.7s
+  - Total keystrokes: 25
+  - Errors: 2
+end note
+
+Calculator --> Session: FinalMetrics
+deactivate Calculator
+
+== Analyze Session ==
+
+Session -> WTracker: generateErrorReport()
+activate WTracker
+
+WTracker -> WTracker: analyzeErrors()
+note right
+  Error analysis:
+  - Total errors: 2
+  - Most problematic: 'l' (2 errors)
+  - Error patterns: adjacent keys
+  - Error rate: 8%
+end note
+
+WTracker -> WTracker: identifyWeakKeys()
+note right
+  Weak keys identified:
+  - 'l': 40% error rate
+  - 'o': 20% error rate
+  
+  Recommendation:
+  Practice drill for 'l' key
+end note
+
+WTracker --> Session: ErrorReport\n{ weakKeys: ['l', 'o'], patterns: [...] }
+deactivate WTracker
+
+Session -> KTracker: generateTimingAnalysis()
+activate KTracker
+
+KTracker -> KTracker: analyzeRhythm()
+KTracker -> KTracker: detectFatigue()
+KTracker -> KTracker: identifyOptimalTempo()
+
+note right
+  <b>Timing Analysis:</b>
+  - Avg inter-key interval: 268ms
+  - Consistency: 85%
+  - Fatigue score: 0.2 (low)
+  - Optimal tempo: 3.7 keys/sec
+  - Burst patterns: detected
+end note
+
+KTracker --> Session: TimingAnalysis
+deactivate KTracker
+
+== Generate Improvement Insights ==
+
+Session -> Analytics: analyzeSession(sessionData)
+activate Analytics
+
+Analytics -> Analytics: compareWithPrevious()
+note right
+  Compare with previous sessions:
+  - WPM improvement: +3 (42 → 45)
+  - Accuracy improvement: +2% (94% → 96%)
+  - Consistency: maintained
+end note
+
+Analytics -> Analytics: predictImprovement()
+note right
+  AI prediction:
+  "At current rate, you'll reach
+  60 WPM in ~12 practice sessions"
+end note
+
+Analytics -> Analytics: generateRecommendations()
+note right
+  <b>Recommendations:</b>
+  1. Practice drill for 'l' key
+  2. Focus on maintaining consistency
+  3. Try increasing speed slightly
+end note
+
+Analytics --> Session: ImprovementInsights
+deactivate Analytics
+
+== Save Session ==
+
+Session -> Session: buildSessionResult()
+note right
+  <b>SessionResult:</b>
+  - sessionId: "sess-123"
+  - duration: 6700ms
+  - finalMetrics: {...}
+  - errorReport: {...}
+  - timingAnalysis: {...}
+  - insights: {...}
+  - completedAt: 2024-01-15T10:30:45Z
+end note
+
+Session -> Repository: save(sessionResult)
+activate Repository
+note right of Repository: <b>Cold path: ~100ms</b>
+
+Repository -> Repository: serializeSession()
+Repository -> Repository: saveToStorage()
+note right
+  Desktop: Tauri Store
+  Web: REST API
+  
+  Debounced, non-blocking
+end note
+
+Repository --> Session: void
+deactivate Repository
+
+== Update State ==
+
+Session -> Session: transitionState()
+note right
+  state: ACTIVE → COMPLETED
+end note
+
+Session -> Session: buildCompletionEvent()
+
+== Notify Observers ==
+
+Session -> Observers: notify(event)
+activate Observers
+note right
+  <b>TypingEvent:</b>
+  - type: SESSION_COMPLETE
+  - metrics: finalMetrics
+  - insights: improvementInsights
+  - timestamp: 1234.99
+end note
+Observers --> Session: void
+deactivate Observers
+
+Session --> UI: SessionResult
+deactivate Session
+
+== Display Results ==
+
+UI -> UI: transitionToResults()
+note right
+  Navigate to results screen
+  or show completion modal
+end note
+
+UI -> UI: showCelebration()
+note right
+  Celebration animation:
+  - Confetti (if milestone)
+  - Success sound
+  - Achievement badges
+end note
+
+UI -> UI: displayMetrics()
+note right
+  <b>Show to user:</b>
+  - WPM: 45 (+3 from last)
+  - Accuracy: 96%
+  - Time: 6.7s
+  - Weak keys: l, o
+  - Recommendation: Practice drill
+end note
+
+UI -> UI: showNextSteps()
+note right
+  <b>Next steps:</b>
+  - Review weak spots
+  - Practice drill for 'l'
+  - Try next lesson
+  - Challenge mode
+end note
+
+UI --> User: Results screen
+deactivate UI
+
+note over User, Observers
+  <b>Session Complete Flow</b>
+  
+  Total time: ~200ms
+  - Final metrics: ~50ms
+  - Analysis: ~100ms
+  - Save: ~50ms (async)
+  
+  User sees:
+  ✓ Comprehensive stats
+  ✓ Improvement insights
+  ✓ Personalized recommendations
+  ✓ Celebration/feedback
+end note
+
+@enduml
+

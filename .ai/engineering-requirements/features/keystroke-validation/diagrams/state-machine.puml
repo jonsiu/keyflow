@@ -1,0 +1,76 @@
+@startuml Keystroke Validation State Machine
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam state {
+  BackgroundColor<<Active>> LightGreen
+  BackgroundColor<<Error>> LightCoral
+  BackgroundColor<<Terminal>> LightBlue
+}
+
+title Keystroke Validation State Machine
+
+[*] --> WAITING_FOR_INPUT : Session Start
+
+state WAITING_FOR_INPUT <<Active>> {
+  state "Ready to receive\nnext keystroke" as ready
+}
+
+state VALIDATING {
+  state "Processing\nkeystroke" as processing
+}
+
+state CORRECT_INPUT <<Active>> {
+  state "Keystroke matched\nexpected character" as correct
+}
+
+state INCORRECT_INPUT <<Error>> {
+  state "Keystroke did not match\nexpected character" as incorrect
+}
+
+state BACKSPACE_ALLOWED <<Active>> {
+  state "User can correct\nprevious character" as backspace
+}
+
+state SESSION_COMPLETE <<Terminal>> {
+  state "All text typed\ncorrectly" as complete
+}
+
+WAITING_FOR_INPUT --> VALIDATING : keyPress(key)
+VALIDATING --> CORRECT_INPUT : key == expected
+VALIDATING --> INCORRECT_INPUT : key != expected
+VALIDATING --> BACKSPACE_ALLOWED : key == Backspace\n&& position > 0
+VALIDATING --> SESSION_COMPLETE : isComplete()
+
+CORRECT_INPUT --> WAITING_FOR_INPUT : advance position\nupdate metrics\nnotify observers
+
+INCORRECT_INPUT --> WAITING_FOR_INPUT : stay at position\nlog error\nshow feedback
+
+BACKSPACE_ALLOWED --> WAITING_FOR_INPUT : move back\nclear error state
+
+SESSION_COMPLETE --> [*] : finalize results\nsave session
+
+note right of VALIDATING
+  <b>Performance Critical</b>
+  Must execute in <0.1ms
+  - No async operations
+  - No allocations
+  - Pre-computed lookups
+end note
+
+note right of INCORRECT_INPUT
+  <b>Error Handling</b>
+  - Visual feedback
+  - Audio feedback (optional)
+  - Error logged for analytics
+  - No forward progress
+end note
+
+note bottom of SESSION_COMPLETE
+  <b>Completion Criteria</b>
+  - All characters typed correctly
+  - Accuracy meets threshold
+  - Strategy completion rules met
+end note
+
+@enduml
+

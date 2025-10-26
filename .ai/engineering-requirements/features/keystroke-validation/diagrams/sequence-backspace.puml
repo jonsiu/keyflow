@@ -1,0 +1,216 @@
+@startuml Sequence: Backspace Recovery
+!theme plain
+skinparam sequenceMessageAlign center
+
+title Keystroke Validation - Backspace Recovery Flow
+
+actor User
+participant "TypingInterface\n(UI Component)" as UI
+participant "TypingSession" as Session
+participant "InputValidator" as Validator
+participant "ValidationStrategy" as Strategy
+participant "MetricsCalculator" as Calculator
+participant "Observers" as Observers
+
+== User Presses Backspace ==
+
+User -> UI: keyPress(Backspace)
+note right
+  User wants to correct
+  previous character
+end note
+
+activate UI
+UI -> Session: processKeystroke(Backspace)
+activate Session
+
+Session -> Session: getCurrentContext()
+note right
+  <b>Context:</b>
+  - currentPosition: 3
+  - userInput: "hel"
+  - expectedText: "hello"
+end note
+
+Session -> Validator: allowBackspace(context)
+activate Validator
+
+Validator -> Strategy: allowsBackspace(position)
+activate Strategy
+note right
+  Check if backspace allowed
+  at current position
+end note
+
+Strategy -> Strategy: checkPosition()
+note right
+  position = 3
+  position > 0 ✓
+  Backspace allowed
+end note
+
+Strategy --> Validator: true
+deactivate Strategy
+
+Validator --> Session: true
+deactivate Validator
+
+== Revert State ==
+
+Session -> Session: revertPosition()
+note right
+  <b>State Changes:</b>
+  - currentPosition: 3 → 2
+  - userInput: "hel" → "he"
+  - expectedChar: 'l' → 'l'
+  
+  Move back one character
+end note
+
+Session -> Session: clearLastError()
+note right
+  If there was an error at
+  position 2, clear visual state
+  (error still logged in history)
+end note
+
+== Recalculate Metrics ==
+
+Session -> Calculator: calculateMetrics(session)
+activate Calculator
+note right of Calculator: <b>Memoized: <0.5ms</b>
+
+Calculator -> Calculator: calculateWPM(updatedKeystrokes)
+Calculator -> Calculator: calculateAccuracy(updatedKeystrokes)
+note right
+  Metrics updated based on
+  remaining keystrokes
+  (position 0-1, not 0-2)
+end note
+
+Calculator --> Session: Metrics\n{ wpm: 38, accuracy: 100 }
+deactivate Calculator
+
+Session -> Session: buildTypingEvent()
+
+== Notify Observers ==
+
+Session -> Observers: notify(event)
+activate Observers
+note right
+  <b>TypingEvent:</b>
+  - type: BACKSPACE
+  - validation: { action: BACKSPACE }
+  - metrics: { wpm: 38, accuracy: 100 }
+  - timestamp: 1234.89
+end note
+Observers --> Session: void
+deactivate Observers
+
+Session --> UI: TypingEvent
+deactivate Session
+
+== Update Display ==
+
+UI -> UI: moveCursorBack()
+note right
+  Cursor position: 3 → 2
+  Highlight character at position 2
+  (the 'l' to be re-typed)
+end note
+
+UI -> UI: clearCharacterDisplay()
+note right
+  Remove visual representation
+  of character at position 2
+  Show it as "to be typed"
+end note
+
+UI -> UI: clearErrorState()
+note right
+  If position 2 had error:
+  - Remove red highlight
+  - Clear error indicator
+  - Reset to neutral state
+end note
+
+UI -> UI: updateMetrics()
+note right
+  Display updated metrics:
+  - WPM: 38
+  - Accuracy: 100%
+  - Progress: 2/5
+end note
+
+UI --> User: Visual feedback
+deactivate UI
+
+note over User, Observers
+  <b>Backspace Allowed</b>
+  User can now retype character at position 2
+  
+  <b>Important Notes:</b>
+  - Original error still logged (analytics)
+  - Error count unchanged (history preserved)
+  - Metrics recalculated based on active range
+  - Visual state cleared for fresh attempt
+end note
+
+== Edge Case: Backspace at Position 0 ==
+
+User -> UI: keyPress(Backspace)
+activate UI
+UI -> Session: processKeystroke(Backspace)
+activate Session
+
+Session -> Session: getCurrentContext()
+note right
+  currentPosition: 0
+end note
+
+Session -> Validator: allowBackspace(context)
+activate Validator
+
+Validator -> Strategy: allowsBackspace(position = 0)
+activate Strategy
+
+Strategy -> Strategy: checkPosition()
+note right
+  position = 0
+  position > 0 ❌
+  Backspace NOT allowed
+end note
+
+Strategy --> Validator: false
+deactivate Strategy
+
+Validator --> Session: false
+deactivate Validator
+
+Session -> Session: ignoreBackspace()
+note right
+  No state change
+  Position stays at 0
+end note
+
+Session --> UI: TypingEvent\n{ action: IGNORED }
+deactivate Session
+
+UI -> UI: noAction()
+note right
+  No visual change
+  Optionally show feedback
+  that backspace is disabled
+end note
+
+UI --> User: No change
+deactivate UI
+
+note over User, Observers
+  <b>Edge Case Handled</b>
+  Backspace at position 0 is ignored
+  to prevent invalid state
+end note
+
+@enduml
+

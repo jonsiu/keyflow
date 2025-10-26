@@ -1,0 +1,143 @@
+@startuml Sequence: Correct Keystroke (Happy Path)
+!theme plain
+skinparam sequenceMessageAlign center
+
+title Keystroke Validation - Correct Keystroke Flow (Happy Path)
+
+actor User
+participant "TypingInterface\n(UI Component)" as UI
+participant "TypingSession" as Session
+participant "InputValidator" as Validator
+participant "ValidationStrategy" as Strategy
+participant "KeystrokeTracker" as KTracker
+participant "MetricsCalculator" as Calculator
+participant "Observers" as Observers
+
+== User Types Correct Character ==
+
+User -> UI: keyPress('h')
+note right: timestamp = performance.now()
+
+activate UI
+UI -> Session: processKeystroke('h')
+activate Session
+
+Session -> Session: getCurrentContext()
+note right
+  <b>Context includes:</b>
+  - expectedText: "hello"
+  - currentPosition: 0
+  - expectedChar: 'h'
+end note
+
+Session -> Validator: validateKeystroke('h', context)
+activate Validator
+note right of Validator: <b>HOT PATH: <0.1ms</b>
+
+Validator -> Strategy: validate('h', 'h', 0)
+activate Strategy
+Strategy --> Validator: { isValid: true, action: ADVANCE }
+deactivate Strategy
+
+Validator -> Validator: buildValidationResult()
+Validator --> Session: ValidationResult\n{ isValid: true, action: ADVANCE }
+deactivate Validator
+
+== Record Keystroke Data ==
+
+Session -> KTracker: record(keystrokeEvent)
+activate KTracker
+note right
+  <b>Keystroke Event:</b>
+  - key: 'h'
+  - timestamp: 1234.56
+  - correct: true
+  - position: 0
+  - dwellTime: 45ms
+  - interKeyInterval: 120ms
+end note
+KTracker --> Session: void
+deactivate KTracker
+
+== Calculate Metrics ==
+
+Session -> Calculator: calculateMetrics(session)
+activate Calculator
+note right of Calculator: <b>Memoized: <0.5ms</b>
+
+Calculator -> Calculator: calculateWPM(keystrokes)
+Calculator -> Calculator: calculateAccuracy(keystrokes)
+Calculator --> Session: Metrics\n{ wpm: 42, accuracy: 100 }
+deactivate Calculator
+
+== Update State ==
+
+Session -> Session: advancePosition()
+note right
+  <b>State Update:</b>
+  - currentPosition: 0 → 1
+  - expectedChar: 'h' → 'e'
+  - userInput: '' → 'h'
+end note
+
+Session -> Session: buildTypingEvent()
+
+== Notify Observers ==
+
+Session -> Observers: notify(event)
+activate Observers
+note right
+  <b>TypingEvent:</b>
+  - type: KEYSTROKE
+  - validation: { isValid: true }
+  - metrics: { wpm: 42, accuracy: 100 }
+  - timestamp: 1234.56
+end note
+Observers --> Session: void
+deactivate Observers
+
+Session --> UI: TypingEvent
+deactivate Session
+
+== Update Display ==
+
+UI -> UI: updateCursor()
+note right
+  Move cursor to position 1
+  Highlight next character 'e'
+end note
+
+UI -> UI: updateMetrics()
+note right
+  Display:
+  - WPM: 42
+  - Accuracy: 100%
+  - Progress: 1/5
+end note
+
+UI -> UI: showFeedback(CORRECT)
+note right
+  Optional:
+  - Green highlight on 'h'
+  - Positive audio feedback
+  - Smooth animation
+end note
+
+UI --> User: Visual feedback
+deactivate UI
+
+note over User, Observers
+  <b>Total Latency: <2ms</b>
+  
+  Breakdown:
+  - Validation: <0.1ms
+  - Keystroke recording: <0.3ms
+  - Metrics calculation: <0.5ms
+  - State update: <0.1ms
+  - UI update: <1ms
+  
+  <b>No IPC, No Async, No Allocations</b>
+end note
+
+@enduml
+
