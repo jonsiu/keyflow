@@ -1,0 +1,365 @@
+@startuml Progress Dashboard Component Architecture
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "packages/shared-ui/components/Dashboard" {
+  
+  component "Dashboard.tsx" as Dashboard
+  note right of Dashboard
+    **Props:**
+    - userId: string
+    - onSessionClick?: (session) => void
+    - onWeakKeyClick?: (key) => void
+    - onAchievementClick?: (achievement) => void
+    
+    **Methods:**
+    + render(): JSX.Element
+    + handleFilterChange(): void
+    + handleExport(): void
+    + handleRefresh(): void
+  end note
+  
+  package "components/" {
+    
+    component "MetricsOverview.tsx" as MetricsOverview
+    note right of MetricsOverview
+      **Props:**
+      - stats: ProgressStats
+      - isLoading: boolean
+      
+      **Methods:**
+      + render(): JSX.Element
+      + formatMetric(): string
+      + getTrendIcon(): string
+    end note
+    
+    component "WPMChart.tsx" as WPMChart
+    note right of WPMChart
+      **Props:**
+      - data: ChartDataPoint[]
+      - config: ChartConfig
+      - onDataPointClick?: (point) => void
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleDataPointClick(): void
+      + formatTooltip(): string
+    end note
+    
+    component "AccuracyChart.tsx" as AccuracyChart
+    note right of AccuracyChart
+      **Props:**
+      - data: ChartDataPoint[]
+      - config: ChartConfig
+      - onDataPointClick?: (point) => void
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleDataPointClick(): void
+      + formatTooltip(): string
+    end note
+    
+    component "SessionHistory.tsx" as SessionHistory
+    note right of SessionHistory
+      **Props:**
+      - sessions: SessionHistoryItem[]
+      - pagination: PaginationState
+      - onSessionClick?: (session) => void
+      - onLoadMore: () => void
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleSort(): void
+      + handleFilter(): void
+      + handleSessionClick(): void
+    end note
+    
+    component "WeakKeyHeatmap.tsx" as WeakKeyHeatmap
+    note right of WeakKeyHeatmap
+      **Props:**
+      - heatmap: KeyboardHeatmap
+      - onKeyClick?: (key) => void
+      - showFingerGuidance: boolean
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleKeyClick(): void
+      + getKeyColor(): string
+      + showTooltip(): void
+    end note
+    
+    component "PracticeFrequency.tsx" as PracticeFrequency
+    note right of PracticeFrequency
+      **Props:**
+      - data: FrequencyData[]
+      - config: ChartConfig
+      
+      **Methods:**
+      + render(): JSX.Element
+      + formatXAxisLabel(): string
+      + formatYAxisLabel(): string
+    end note
+    
+    component "ModeDistribution.tsx" as ModeDistribution
+    note right of ModeDistribution
+      **Props:**
+      - data: ModeData[]
+      - config: ChartConfig
+      - onModeClick?: (mode) => void
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleModeClick(): void
+      + getModeColor(): string
+    end note
+    
+    component "Achievements.tsx" as Achievements
+    note right of Achievements
+      **Props:**
+      - achievements: Achievement[]
+      - unlockedCount: number
+      - onAchievementClick?: (achievement) => void
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleAchievementClick(): void
+      + getRarityColor(): string
+      + formatProgress(): string
+    end note
+    
+    component "ExportControls.tsx" as ExportControls
+    note right of ExportControls
+      **Props:**
+      - onExport: (options) => Promise<ExportResult>
+      - isLoading: boolean
+      
+      **Methods:**
+      + render(): JSX.Element
+      + handleExport(): void
+      + showExportModal(): void
+      + generateFilename(): string
+    end note
+  }
+  
+  package "hooks/" {
+    
+    component "useProgressData.ts" as UseProgressData
+    note right of UseProgressData
+      **Input:**
+      - userId: string
+      
+      **Output:**
+      + data: ProgressData
+      + isLoading: boolean
+      + error: string | null
+      + refresh(): Promise<void>
+    end note
+    
+    component "useChartData.ts" as UseChartData
+    note right of UseChartData
+      **Input:**
+      - sessions: SessionHistoryItem[]
+      - filters: DashboardFilters
+      
+      **Output:**
+      + chartData: ChartDataPoint[]
+      + processedData: ProcessedChartData
+      + isLoading: boolean
+    end note
+    
+    component "useWeakKeyAnalysis.ts" as UseWeakKeyAnalysis
+    note right of UseWeakKeyAnalysis
+      **Input:**
+      - sessions: SessionHistoryItem[]
+      - dateRange: [Date, Date]
+      
+      **Output:**
+      + analysis: WeakKeyAnalysis[]
+      + heatmap: KeyboardHeatmap
+      + isLoading: boolean
+      + refresh(): Promise<void>
+    end note
+    
+    component "useAchievements.ts" as UseAchievements
+    note right of UseAchievements
+      **Input:**
+      - userId: string
+      - progressData: ProgressData
+      
+      **Output:**
+      + achievements: Achievement[]
+      + unlockedCount: number
+      + isLoading: boolean
+      + checkNewAchievements(): void
+    end note
+  }
+  
+  package "utils/" {
+    
+    component "chartDataProcessor.ts" as ChartProcessor
+    note right of ChartProcessor
+      **Methods:**
+      + downsample(data, maxPoints): ChartDataPoint[]
+      + filterByDateRange(data, range): ChartDataPoint[]
+      + filterByMode(data, mode): ChartDataPoint[]
+      + calculateTrend(data, metric): number
+      + groupByPeriod(data, period): FrequencyData[]
+    end note
+    
+    component "weakKeyDetector.ts" as WeakKeyDetector
+    note right of WeakKeyDetector
+      **Methods:**
+      + analyzeSessions(sessions): WeakKeyAnalysis[]
+      + calculateImprovementTrend(key, sessions): number
+      + generateRecommendations(analysis): string[]
+      + updateHeatmap(analysis): KeyboardHeatmap
+    end note
+    
+    component "exportUtils.ts" as ExportUtils
+    note right of ExportUtils
+      **Methods:**
+      + exportToCSV(sessions, options): Blob
+      + exportToJSON(data, options): Blob
+      + exportToXLSX(sessions, options): Blob
+      + exportChartAsImage(chartRef, format): Blob
+      + generateFilename(format, dateRange): string
+    end note
+  }
+}
+
+package "packages/shared-types" {
+  component "dashboard.ts" as DashboardTypes
+  note right of DashboardTypes
+    **Exports:**
+    + ProgressStats
+    + ChartDataPoint
+    + SessionHistoryItem
+    + WeakKeyAnalysis
+    + KeyboardHeatmap
+    + Achievement
+    + DashboardFilters
+    + ExportOptions
+  end note
+}
+
+package "packages/shared-core" {
+  component "analytics/ProgressTracker.ts" as ProgressTracker
+  note right of ProgressTracker
+    **Methods:**
+    + calculateProgressStats(sessions): ProgressStats
+    + trackImprovement(sessions): number
+    + calculateConsistency(sessions): number
+  end note
+  
+  component "analytics/WeakSpotDetector.ts" as WeakSpotDetector
+  note right of WeakSpotDetector
+    **Methods:**
+    + detectWeakKeys(sessions): string[]
+    + analyzeKeyPerformance(sessions, key): KeyAnalysis
+    + generateDrillRecommendations(analysis): string[]
+  end note
+  
+  component "typing/TypingSession.ts" as TypingSession
+  note right of TypingSession
+    **Methods:**
+    + serialize(): SessionData
+    + deserialize(data): TypingSession
+    + calculateMetrics(): SessionMetrics
+  end note
+}
+
+package "apps/desktop/src/stores" {
+  component "dashboardStore.ts" as DashboardStore
+  note right of DashboardStore
+    **State:**
+    + sessions: SessionHistoryItem[]
+    + progressStats: ProgressStats
+    + weakKeyAnalysis: WeakKeyAnalysis[]
+    + achievements: Achievement[]
+    + filters: DashboardFilters
+    + isLoading: boolean
+    
+    **Actions:**
+    + setFilters(filters): void
+    + setViewOptions(options): void
+    + refreshData(): Promise<void>
+    + exportData(options): Promise<ExportResult>
+  end note
+}
+
+package "apps/web/src/stores" {
+  component "dashboardStore.ts" as WebDashboardStore
+  note right of WebDashboardStore
+    **State:**
+    + sessions: SessionHistoryItem[]
+    + progressStats: ProgressStats
+    + weakKeyAnalysis: WeakKeyAnalysis[]
+    + achievements: Achievement[]
+    + filters: DashboardFilters
+    + isLoading: boolean
+    
+    **Actions:**
+    + setFilters(filters): void
+    + setViewOptions(options): void
+    + refreshData(): Promise<void>
+    + exportData(options): Promise<ExportResult>
+  end note
+}
+
+package "backend/src/routes" {
+  component "dashboardRoutes.ts" as DashboardAPI
+  note right of DashboardAPI
+    **Endpoints:**
+    + GET /api/dashboard/sessions
+    + GET /api/dashboard/stats
+    + GET /api/dashboard/weak-keys
+    + GET /api/dashboard/achievements
+    + POST /api/dashboard/export
+  end note
+}
+
+' Component Relationships
+
+Dashboard --> MetricsOverview : uses
+Dashboard --> WPMChart : uses
+Dashboard --> AccuracyChart : uses
+Dashboard --> SessionHistory : uses
+Dashboard --> WeakKeyHeatmap : uses
+Dashboard --> PracticeFrequency : uses
+Dashboard --> ModeDistribution : uses
+Dashboard --> Achievements : uses
+Dashboard --> ExportControls : uses
+
+Dashboard --> UseProgressData : uses
+Dashboard --> UseChartData : uses
+Dashboard --> UseWeakKeyAnalysis : uses
+Dashboard --> UseAchievements : uses
+
+Dashboard --> ChartProcessor : uses
+Dashboard --> WeakKeyDetector : uses
+Dashboard --> ExportUtils : uses
+
+Dashboard --> DashboardTypes : imports
+Dashboard --> DashboardStore : uses
+
+UseProgressData --> ProgressTracker : uses
+UseWeakKeyAnalysis --> WeakSpotDetector : uses
+UseAchievements --> ProgressTracker : uses
+
+ChartProcessor --> TypingSession : uses
+WeakKeyDetector --> TypingSession : uses
+
+DashboardStore --> DashboardAPI : calls
+WebDashboardStore --> DashboardAPI : calls
+
+' Data Flow
+DashboardTypes ..> Dashboard : provides types
+ProgressTracker ..> UseProgressData : provides data
+WeakSpotDetector ..> UseWeakKeyAnalysis : provides analysis
+TypingSession ..> ChartProcessor : provides session data
+DashboardAPI ..> DashboardStore : provides data
+
+@enduml

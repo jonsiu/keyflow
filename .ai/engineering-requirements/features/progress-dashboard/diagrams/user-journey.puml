@@ -1,0 +1,87 @@
+@startuml Progress Dashboard User Journey
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam activityStyle rectangle
+skinparam activityBorderColor #0ea5e9
+skinparam activityBackgroundColor #f0f9ff
+skinparam activityFontColor #0c4a6e
+skinparam activityDiamondBackgroundColor #22c55e
+skinparam activityDiamondBorderColor #16a34a
+
+title Progress Dashboard User Journey
+
+|#LightBlue|**Discovery Phase**|
+start
+:User completes typing session;
+:User sees "View Progress" button;
+:User clicks to view dashboard;
+note right: **Entry Point**\nUser wants to see\ntheir improvement
+
+|#LightGreen|**Initial Load**|
+:Dashboard loads with loading state;
+:User sees skeleton screens;
+:Data loads from backend/local storage;
+:User sees complete dashboard;
+note right: **First Impression**\nClean, professional UI\nmatches Monkeytype aesthetic
+
+|#LightYellow|**Exploration Phase**|
+:User views WPM trend chart;
+:User examines session history;
+:User checks accuracy trends;
+:User explores weak key heatmap;
+note right: **Data Discovery**\nUser identifies patterns\nand improvement areas
+
+|#LightCoral|**Interaction Phase**|
+if (User wants to filter data?) then (yes)
+  :User adjusts date range filter;
+  :User selects practice mode filter;
+  :Charts update with filtered data;
+  :User sees refined insights;
+  note right: **Data Filtering**\nUser customizes view\nto focus on specific periods
+else (no)
+endif
+
+if (User wants to drill down?) then (yes)
+  :User clicks on weak key in heatmap;
+  :User navigates to drill mode;
+  :User practices specific weak key;
+  :User returns to dashboard;
+  note right: **Actionable Insights**\nUser takes action based\non dashboard insights
+else (no)
+endif
+
+if (User wants to export data?) then (yes)
+  :User clicks export button;
+  :User selects export format (CSV/JSON);
+  :User downloads data file;
+  :User uses data for analysis;
+  note right: **Data Export**\nUser takes data outside\nfor further analysis
+else (no)
+endif
+
+|#LightPink|**Achievement Phase**|
+:User notices achievement notifications;
+:User views achievement progress;
+:User feels motivated to continue;
+:User plans next practice session;
+note right: **Gamification**\nUser feels rewarded and\nmotivated to improve
+
+|#LightGray|**Return Journey**|
+:User bookmarks dashboard;
+:User returns regularly;
+:User tracks long-term progress;
+:User shares achievements;
+note right: **Retention**\nUser becomes regular\nprogress tracker
+
+stop
+
+note over start, stop
+  **Key Success Metrics:**
+  - Dashboard viewed by 80%+ of users
+  - Average session time: 2+ minutes
+  - Export functionality used by 20%+
+  - Achievement system increases practice frequency by 15%
+end note
+
+@enduml

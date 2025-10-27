@@ -1,0 +1,276 @@
+@startuml Progress Dashboard Data Model
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+skinparam classFontSize 12
+
+title Progress Dashboard Data Model
+
+package "Core Entities" {
+  
+  class User {
+    + id: string (PK)
+    + email: string
+    + name: string
+    + createdAt: Date
+    + lastActiveAt: Date
+    + preferences: UserPreferences
+    --
+    + getProgressStats(): ProgressStats
+    + getSessions(): TypingSession[]
+  }
+  
+  class TypingSession {
+    + id: string (PK)
+    + userId: string (FK)
+    + mode: PracticeMode
+    + startTime: Date
+    + endTime: Date
+    + duration: number
+    + wpm: number
+    + accuracy: number
+    + errors: number
+    + charactersTyped: number
+    + correctChars: number
+    + exercise: Exercise
+    + keystrokeData: KeystrokeEvent[]
+    --
+    + calculateMetrics(): SessionMetrics
+    + serialize(): SessionData
+  }
+  
+  class Exercise {
+    + id: string (PK)
+    + title: string
+    + text: string
+    + difficulty: DifficultyLevel
+    + focusKeys: string[]
+    + category: ExerciseCategory
+    + estimatedTime: number
+    --
+    + getDifficultyScore(): number
+    + getFocusKeyCount(): number
+  }
+  
+  class KeystrokeEvent {
+    + id: string (PK)
+    + sessionId: string (FK)
+    + key: string
+    + timestamp: number
+    + expected: string
+    + correct: boolean
+    + dwellTime: number
+    + interKeyInterval: number
+    + position: number
+    --
+    + isError(): boolean
+    + getSpeed(): number
+  }
+}
+
+package "Analytics Entities" {
+  
+  class ProgressStats {
+    + userId: string (FK)
+    + averageWPM: number
+    + bestWPM: number
+    + averageAccuracy: number
+    + totalPracticeTime: number
+    + totalSessions: number
+    + improvementRate: number
+    + consistencyScore: number
+    + lastUpdated: Date
+    --
+    + calculateTrend(): number
+    + getImprovementRate(): number
+  }
+  
+  class WeakKeyAnalysis {
+    + id: string (PK)
+    + userId: string (FK)
+    + key: string
+    + errorRate: number
+    + avgSpeed: number
+    + improvementTrend: number
+    + practiceRecommendation: string
+    + finger: FingerType
+    + sessionsAnalyzed: number
+    + lastAnalyzed: Date
+    --
+    + getPerformanceScore(): number
+    + needsPractice(): boolean
+  }
+  
+  class Achievement {
+    + id: string (PK)
+    + name: string
+    + description: string
+    + category: AchievementCategory
+    + rarity: AchievementRarity
+    + criteria: AchievementCriteria
+    + points: number
+    --
+    + isUnlocked(userId): boolean
+    + getProgress(userId): number
+  }
+  
+  class UserAchievement {
+    + id: string (PK)
+    + userId: string (FK)
+    + achievementId: string (FK)
+    + unlockedAt: Date
+    + progress: number
+    --
+    + isComplete(): boolean
+    + getProgressPercentage(): number
+  }
+}
+
+package "Dashboard Entities" {
+  
+  class ChartDataPoint {
+    + date: Date
+    + wpm: number
+    + accuracy: number
+    + mode: PracticeMode
+    + sessionId: string
+    + duration: number
+    + errors: number
+    --
+    + getTrendValue(): number
+    + isOutlier(): boolean
+  }
+  
+  class DashboardFilters {
+    + dateRange: DateRange
+    + mode: PracticeMode | 'all'
+    + minWPM: number
+    + minAccuracy: number
+    + exerciseDifficulty: DifficultyLevel
+    --
+    + isValid(): boolean
+    + toQueryParams(): object
+  }
+  
+  class ExportOptions {
+    + format: ExportFormat
+    + dateRange: DateRange
+    + includeKeystrokeData: boolean
+    + includeCharts: boolean
+    + includeWeakKeyAnalysis: boolean
+    --
+    + getFilename(): string
+    + validate(): boolean
+  }
+}
+
+package "Enums" {
+  enum PracticeMode {
+    lesson
+    practice
+    drill
+    challenge
+  }
+  
+  enum DifficultyLevel {
+    beginner
+    intermediate
+    advanced
+  }
+  
+  enum ExerciseCategory {
+    common_words
+    sentences
+    paragraphs
+    code
+    quotes
+  }
+  
+  enum FingerType {
+    left_pinky
+    left_ring
+    left_middle
+    left_index
+    right_index
+    right_middle
+    right_ring
+    right_pinky
+    thumbs
+  }
+  
+  enum AchievementCategory {
+    speed
+    accuracy
+    consistency
+    exploration
+    dedication
+    improvement
+  }
+  
+  enum AchievementRarity {
+    common
+    uncommon
+    rare
+    epic
+    legendary
+  }
+  
+  enum ExportFormat {
+    csv
+    json
+    xlsx
+    png
+    svg
+    pdf
+  }
+}
+
+' Relationships
+
+User ||--o{ TypingSession : "has many"
+User ||--o| ProgressStats : "has one"
+User ||--o{ WeakKeyAnalysis : "has many"
+User ||--o{ UserAchievement : "has many"
+
+TypingSession ||--o{ KeystrokeEvent : "contains many"
+TypingSession }o--|| Exercise : "uses"
+
+Achievement ||--o{ UserAchievement : "unlocked by"
+
+TypingSession ..> ChartDataPoint : "generates"
+User ..> DashboardFilters : "applies"
+User ..> ExportOptions : "creates"
+
+' Data Flow Annotations
+
+note top of User
+  **Primary Entity**
+  - Central to all dashboard data
+  - Links to all user-specific analytics
+  - Drives personalization features
+end note
+
+note right of TypingSession
+  **Core Data Source**
+  - Raw session data for all analytics
+  - Contains keystroke-level detail
+  - Basis for progress calculations
+end note
+
+note bottom of ProgressStats
+  **Aggregated Analytics**
+  - Pre-calculated for performance
+  - Updated after each session
+  - Powers dashboard metrics
+end note
+
+note left of WeakKeyAnalysis
+  **AI-Powered Insights**
+  - Generated from keystroke data
+  - Drives drill recommendations
+  - Updated periodically
+end note
+
+@enduml

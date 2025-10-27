@@ -1,0 +1,258 @@
+@startuml Progress Dashboard Data Flow Sequence
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 60
+
+actor User
+participant "Dashboard Component" as Dashboard
+participant "Zustand Store" as Store
+participant "Progress API" as API
+participant "Chart Processor" as Processor
+participant "Weak Key Analyzer" as Analyzer
+participant "Achievement Engine" as Achievement
+
+== Dashboard Initialization ==
+
+User -> Dashboard: Load dashboard page
+activate Dashboard
+
+Dashboard -> Store: Initialize dashboard store
+activate Store
+Store -> Store: Set loading state (true)
+Store --> Dashboard: Return initial state
+deactivate Store
+
+Dashboard -> API: Fetch user sessions
+activate API
+API -> API: Query database for sessions
+API --> Dashboard: Return session data
+deactivate API
+
+Dashboard -> API: Fetch progress stats
+activate API
+API -> API: Calculate aggregated metrics
+API --> Dashboard: Return progress stats
+deactivate API
+
+Dashboard -> Store: Update sessions data
+activate Store
+Store -> Store: Process and store sessions
+Store --> Dashboard: Confirm update
+deactivate Store
+
+Dashboard -> Store: Update progress stats
+activate Store
+Store -> Store: Process and store stats
+Store --> Dashboard: Confirm update
+deactivate Store
+
+== Chart Data Processing ==
+
+Dashboard -> Processor: Process chart data
+activate Processor
+Processor -> Store: Get sessions data
+activate Store
+Store --> Processor: Return sessions
+deactivate Store
+
+Processor -> Processor: Downsample data (LTTB algorithm)
+Processor -> Processor: Filter by date range
+Processor -> Processor: Group by time periods
+Processor --> Dashboard: Return processed chart data
+deactivate Processor
+
+Dashboard -> Store: Update chart data
+activate Store
+Store -> Store: Store processed chart data
+Store --> Dashboard: Confirm update
+deactivate Store
+
+== Weak Key Analysis ==
+
+Dashboard -> Analyzer: Analyze weak keys
+activate Analyzer
+Analyzer -> Store: Get session keystroke data
+activate Store
+Store --> Analyzer: Return keystroke events
+deactivate Store
+
+Analyzer -> Analyzer: Calculate error rates per key
+Analyzer -> Analyzer: Calculate average speed per key
+Analyzer -> Analyzer: Calculate improvement trends
+Analyzer -> Analyzer: Generate recommendations
+Analyzer --> Dashboard: Return weak key analysis
+deactivate Analyzer
+
+Dashboard -> Store: Update weak key analysis
+activate Store
+Store -> Store: Store analysis results
+Store --> Dashboard: Confirm update
+deactivate Store
+
+== Achievement Processing ==
+
+Dashboard -> Achievement: Check achievements
+activate Achievement
+Achievement -> Store: Get user progress data
+activate Store
+Store --> Achievement: Return progress data
+deactivate Store
+
+Achievement -> Achievement: Evaluate achievement criteria
+Achievement -> Achievement: Calculate progress percentages
+Achievement -> Achievement: Check for new unlocks
+Achievement --> Dashboard: Return achievements
+deactivate Achievement
+
+Dashboard -> Store: Update achievements
+activate Store
+Store -> Store: Store achievement data
+Store --> Dashboard: Confirm update
+deactivate Store
+
+== UI Rendering ==
+
+Dashboard -> Store: Get all dashboard data
+activate Store
+Store --> Dashboard: Return complete state
+deactivate Store
+
+Dashboard -> Dashboard: Render metrics overview
+Dashboard -> Dashboard: Render WPM trend chart
+Dashboard -> Dashboard: Render accuracy chart
+Dashboard -> Dashboard: Render session history table
+Dashboard -> Dashboard: Render weak key heatmap
+Dashboard -> Dashboard: Render practice frequency chart
+Dashboard -> Dashboard: Render mode distribution chart
+Dashboard -> Dashboard: Render achievements
+
+Dashboard -> Store: Set loading state (false)
+activate Store
+Store --> Dashboard: Confirm state update
+deactivate Store
+
+Dashboard --> User: Display complete dashboard
+deactivate Dashboard
+
+== User Interaction: Filter Data ==
+
+User -> Dashboard: Change date range filter
+activate Dashboard
+
+Dashboard -> Store: Update filters
+activate Store
+Store -> Store: Store new filter state
+Store --> Dashboard: Confirm filter update
+deactivate Store
+
+Dashboard -> Processor: Reprocess data with new filters
+activate Processor
+Processor -> Store: Get filtered sessions
+activate Store
+Store --> Processor: Return filtered data
+deactivate Store
+
+Processor -> Processor: Apply date range filter
+Processor -> Processor: Apply mode filter
+Processor --> Dashboard: Return reprocessed data
+deactivate Processor
+
+Dashboard -> Store: Update chart data
+activate Store
+Store -> Store: Store reprocessed data
+Store --> Dashboard: Confirm update
+deactivate Store
+
+Dashboard -> Dashboard: Re-render charts with new data
+Dashboard --> User: Display filtered results
+deactivate Dashboard
+
+== User Interaction: Export Data ==
+
+User -> Dashboard: Click export button
+activate Dashboard
+
+Dashboard -> Dashboard: Show export options modal
+Dashboard --> User: Display export options
+
+User -> Dashboard: Select export format (CSV)
+activate Dashboard
+
+Dashboard -> API: Request data export
+activate API
+API -> API: Generate CSV from sessions
+API -> API: Create downloadable file
+API --> Dashboard: Return export file
+deactivate API
+
+Dashboard -> Dashboard: Trigger file download
+Dashboard --> User: Download CSV file
+deactivate Dashboard
+
+== User Interaction: Weak Key Drill ==
+
+User -> Dashboard: Click weak key on heatmap
+activate Dashboard
+
+Dashboard -> Dashboard: Identify target key
+Dashboard -> Dashboard: Navigate to drill mode
+Dashboard --> User: Redirect to drill with focus key
+deactivate Dashboard
+
+== Background Data Sync ==
+
+loop Every 5 minutes
+    Dashboard -> API: Sync local changes
+    activate API
+    API -> API: Process sync queue
+    API --> Dashboard: Confirm sync
+    deactivate API
+end
+
+== Error Handling ==
+
+User -> Dashboard: Load dashboard (network error)
+activate Dashboard
+
+Dashboard -> API: Fetch user sessions
+activate API
+API -> API: Network request fails
+API --> Dashboard: Return error
+deactivate API
+
+Dashboard -> Store: Set error state
+activate Store
+Store -> Store: Store error message
+Store --> Dashboard: Confirm error state
+deactivate Store
+
+Dashboard -> Dashboard: Render error message
+Dashboard --> User: Display error with retry option
+deactivate Dashboard
+
+User -> Dashboard: Click retry button
+activate Dashboard
+
+Dashboard -> Store: Clear error state
+activate Store
+Store --> Dashboard: Confirm error cleared
+deactivate Store
+
+Dashboard -> API: Retry fetch sessions
+activate API
+API -> API: Network request succeeds
+API --> Dashboard: Return session data
+deactivate API
+
+Dashboard -> Store: Update with successful data
+activate Store
+Store --> Dashboard: Confirm update
+deactivate Store
+
+Dashboard --> User: Display successful dashboard
+deactivate Dashboard
+
+@enduml

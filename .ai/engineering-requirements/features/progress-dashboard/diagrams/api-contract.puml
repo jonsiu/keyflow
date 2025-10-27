@@ -1,0 +1,126 @@
+@startuml Progress Dashboard API Contract
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam participantStyle rectangle
+skinparam participantBackgroundColor #f0f9ff
+skinparam participantBorderColor #0ea5e9
+skinparam participantFontColor #0c4a6e
+
+title Progress Dashboard API Contract
+
+participant "Desktop App\n(Tauri)" as Desktop
+participant "Web App\n(Next.js)" as Web
+participant "Backend API\n(Express/Hono)" as API
+participant "Database\n(PostgreSQL)" as DB
+participant "File Storage\n(AWS S3/R2)" as Storage
+
+== Dashboard Initialization ==
+
+Desktop -> API: GET /api/dashboard/sessions?userId=123&limit=30
+note right: **Request:**\n- userId: string\n- limit?: number\n- offset?: number\n- dateRange?: string\n- mode?: PracticeMode
+
+API -> DB: SELECT sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT ?
+DB --> API: Return session records
+API -> API: Transform to SessionHistoryItem[]
+API --> Desktop: **Response:**\n```json\n{\n  "sessions": SessionHistoryItem[],\n  "pagination": {\n    "page": 1,\n    "limit": 30,\n    "total": 127,\n    "hasMore": true\n  },\n  "success": true\n}\n```
+
+Web -> API: GET /api/dashboard/sessions?userId=123&limit=30
+API -> DB: SELECT sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT ?
+DB --> API: Return session records
+API --> Web: **Response:** Same as Desktop
+
+== Progress Statistics ==
+
+Desktop -> API: GET /api/dashboard/stats?userId=123&dateRange=30d
+note right: **Request:**\n- userId: string\n- dateRange?: string\n- mode?: PracticeMode
+
+API -> DB: SELECT aggregated metrics WHERE user_id = ? AND date >= ?
+DB --> API: Return aggregated data
+API -> API: Calculate ProgressStats
+API --> Desktop: **Response:**\n```json\n{\n  "stats": {\n    "averageWPM": 78.5,\n    "bestWPM": 95.2,\n    "averageAccuracy": 94.8,\n    "totalPracticeTime": 43200,\n    "totalSessions": 127,\n    "improvementRate": 2.3,\n    "consistencyScore": 87.2\n  },\n  "success": true\n}\n```
+
+== Weak Key Analysis ==
+
+Desktop -> API: GET /api/dashboard/weak-keys?userId=123&dateRange=30d
+note right: **Request:**\n- userId: string\n- dateRange?: string\n- minSessions?: number
+
+API -> DB: SELECT keystroke_events WHERE user_id = ? AND date >= ?
+DB --> API: Return keystroke data
+API -> API: Analyze weak keys using ML
+API --> Desktop: **Response:**\n```json\n{\n  "analysis": [\n    {\n      "key": "j",\n      "errorRate": 0.12,\n      "avgSpeed": 245,\n      "improvementTrend": -0.05,\n      "practiceRecommendation": "Focus on J key drills",\n      "finger": "right_index"\n    }\n  ],\n  "heatmap": {\n    "overallScore": 87.2,\n    "weakestFinger": "right_index",\n    "improvementAreas": ["j", "k", "l"]\n  },\n  "success": true\n}\n```
+
+== Achievement System ==
+
+Desktop -> API: GET /api/dashboard/achievements?userId=123
+note right: **Request:**\n- userId: string\n- includeProgress?: boolean
+
+API -> DB: SELECT achievements, user_achievements WHERE user_id = ?
+DB --> API: Return achievement data
+API -> API: Calculate progress percentages
+API --> Desktop: **Response:**\n```json\n{\n  "achievements": [\n    {\n      "id": "speed_50_wpm",\n      "name": "Speed Demon",\n      "description": "Reach 50 WPM",\n      "category": "speed",\n      "rarity": "common",\n      "unlockedAt": "2024-01-15T10:30:00Z",\n      "progress": 100,\n      "points": 10\n    }\n  ],\n  "unlockedCount": 12,\n  "totalCount": 25,\n  "success": true\n}\n```
+
+== Data Export ==
+
+Desktop -> API: POST /api/dashboard/export
+note right: **Request:**\n```json\n{\n  "userId": "123",\n  "format": "csv",\n  "dateRange": ["2024-01-01", "2024-01-31"],\n  "includeKeystrokeData": false,\n  "includeCharts": true,\n  "includeWeakKeyAnalysis": true\n}\n```
+
+API -> DB: SELECT sessions, keystroke_events WHERE user_id = ? AND date BETWEEN ?
+DB --> API: Return export data
+API -> API: Generate CSV/JSON/XLSX file
+API -> Storage: Upload file to S3/R2
+Storage --> API: Return file URL
+API --> Desktop: **Response:**\n```json\n{\n  "downloadUrl": "https://storage.example.com/exports/user123_2024-01.csv",\n  "filename": "keyflow_progress_2024-01.csv",\n  "size": 245760,\n  "expiresAt": "2024-02-01T00:00:00Z",\n  "success": true\n}\n```
+
+== Real-time Updates ==
+
+Desktop -> API: WebSocket /ws/dashboard?userId=123
+note right: **WebSocket Connection**\n- Real-time session updates\n- Achievement unlocks\n- Progress notifications
+
+API -> Desktop: **WebSocket Messages:**\n```json\n{\n  "type": "session_completed",\n  "data": {\n    "sessionId": "sess_456",\n    "wpm": 82.3,\n    "accuracy": 96.1,\n    "newAchievements": ["accuracy_95"]\n  }\n}\n```
+
+== Error Handling ==
+
+Desktop -> API: GET /api/dashboard/sessions?userId=123
+API -> DB: Database connection fails
+DB --> API: Connection error
+API --> Desktop: **Error Response:**\n```json\n{\n  "error": {\n    "code": "DATABASE_ERROR",\n    "message": "Unable to connect to database",\n    "details": "Connection timeout after 30s"\n  },\n  "success": false,\n  "retryAfter": 5\n}\n```
+
+== Authentication ==
+
+Desktop -> API: GET /api/dashboard/sessions
+note right: **Headers:**\n- Authorization: Bearer <jwt_token>\n- X-Client-Version: 1.0.0\n- X-Platform: desktop
+
+API -> API: Validate JWT token
+API -> API: Extract userId from token
+API -> DB: Query with authenticated userId
+DB --> API: Return user data
+API --> Desktop: **Response:** Same as above
+
+Web -> API: GET /api/dashboard/sessions
+note right: **Headers:**\n- Authorization: Bearer <jwt_token>\n- X-Client-Version: 1.0.0\n- X-Platform: web
+
+API -> API: Validate JWT token
+API --> Web: **Response:** Same as Desktop
+
+== Rate Limiting ==
+
+note over Desktop, API
+  **Rate Limits:**
+  - Dashboard API: 100 requests/minute
+  - Export API: 10 requests/hour
+  - WebSocket: 1 connection per user
+  - File downloads: 5 concurrent per user
+end note
+
+== Data Synchronization ==
+
+Desktop -> API: POST /api/dashboard/sync
+note right: **Request:**\n```json\n{\n  "userId": "123",\n  "lastSyncAt": "2024-01-15T10:00:00Z",\n  "localChanges": [\n    {\n      "type": "session_created",\n      "data": { /* session data */ }\n    }\n  ]\n}\n```
+
+API -> DB: Process sync operations
+DB --> API: Return conflicts
+API -> API: Resolve conflicts (last-write-wins)
+API --> Desktop: **Response:**\n```json\n{\n  "syncedChanges": 5,\n  "conflicts": 0,\n  "serverChanges": [\n    {\n      "type": "achievement_unlocked",\n      "data": { /* achievement data */ }\n    }\n  ],\n  "success": true\n}\n```
+
+@enduml

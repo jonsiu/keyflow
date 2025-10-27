@@ -71,37 +71,52 @@ Components subscribe to keystroke events without tight coupling:
 
 ## Component Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Presentation Layer                    │
-│              (packages/shared-ui)                        │
-│                                                          │
-│  ┌──────────────────────────────────────────────┐      │
-│  │         TypingInterface.tsx                   │      │
-│  │  - Captures keyboard events                   │      │
-│  │  - Displays current text and cursor           │      │
-│  │  - Provides visual/audio feedback             │      │
-│  └─────────────────┬────────────────────────────┘      │
-└────────────────────┼───────────────────────────────────┘
-                     │
-                     ▼ uses
-┌─────────────────────────────────────────────────────────┐
-│                  Business Logic Layer                    │
-│              (packages/shared-core)                      │
-│                                                          │
-│  ┌──────────────────────────────────────────────┐      │
-│  │         TypingSessionFacade                   │      │
-│  │  - Simplified API for UI                      │      │
-│  │  - Coordinates subsystems                     │      │
-│  └───────┬──────────────┬──────────────┬────────┘      │
-│          │              │              │                │
-│          ▼              ▼              ▼                │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ Input    │  │ Keystroke    │  │ Metrics      │    │
-│  │Validator │  │ Tracker      │  │ Calculator   │    │
-│  └──────────┘  └──────────────┘  └──────────────┘    │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+
+package "Presentation Layer" as presentation #E3F2FD {
+    class TypingInterface {
+        + Captures keyboard events
+        + Displays current text and cursor
+        + Provides visual/audio feedback
+    }
+}
+
+package "Business Logic Layer" as business #F3E5F5 {
+    class TypingSessionFacade {
+        + Simplified API for UI
+        + Coordinates subsystems
+    }
+    
+    class InputValidator {
+        Input Validator
+    }
+    
+    class KeystrokeTracker {
+        Keystroke Tracker
+    }
+    
+    class MetricsCalculator {
+        Metrics Calculator
+    }
+}
+
+TypingInterface --> TypingSessionFacade : uses
+TypingSessionFacade --> InputValidator : coordinates
+TypingSessionFacade --> KeystrokeTracker : coordinates
+TypingSessionFacade --> MetricsCalculator : coordinates
+
+note right of presentation
+  packages/shared-ui
+end note
+
+note right of business
+  packages/shared-core
+end note
+
+@enduml
 ```
 
 ## Hot Path Optimization

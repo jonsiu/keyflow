@@ -1,0 +1,259 @@
+@startuml Progress Dashboard State Management
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "Zustand Store Architecture" {
+  
+  component "DashboardStore" as Store
+  note right of Store
+    **State:**
+    + sessions: SessionHistoryItem[]
+    + progressStats: ProgressStats
+    + weakKeyAnalysis: WeakKeyAnalysis[]
+    + keyboardHeatmap: KeyboardHeatmap
+    + achievements: Achievement[]
+    + chartData: ChartDataPoint[]
+    + filters: DashboardFilters
+    + viewOptions: DashboardViewOptions
+    + isLoading: boolean
+    + error: string | null
+    + lastUpdated: Date
+    + sessionHistoryPagination: PaginationState
+  end note
+  
+  component "Actions" as Actions
+  note right of Actions
+    **Action Methods:**
+    + setFilters(filters): void
+    + setViewOptions(options): void
+    + setTimeRange(range): void
+    + setMode(mode): void
+    + refreshData(): Promise<void>
+    + loadMoreSessions(): Promise<void>
+    + exportData(options): Promise<ExportResult>
+    + clearError(): void
+    + setLoading(loading): void
+    + setError(error): void
+    + updateSessions(sessions): void
+    + updateProgressStats(stats): void
+    + updateWeakKeyAnalysis(analysis): void
+    + updateAchievements(achievements): void
+    + updateChartData(data): void
+  end note
+  
+  component "Middleware" as Middleware
+  note right of Middleware
+    **Middleware Chain:**
+    + persistenceMiddleware
+    + syncMiddleware
+    + loggerMiddleware
+    + errorHandlingMiddleware
+  end note
+  
+  component "Selectors" as Selectors
+  note right of Selectors
+    **Computed Values:**
+    + getFilteredSessions(): SessionHistoryItem[]
+    + getChartData(): ChartDataPoint[]
+    + getWeakKeysByFinger(): WeakKeyAnalysis[]
+    + getUnlockedAchievements(): Achievement[]
+    + getProgressTrend(): number
+    + getConsistencyScore(): number
+  end note
+}
+
+package "Data Sources" {
+  
+  component "Local Storage" as LocalStorage
+  note right of LocalStorage
+    **Storage Types:**
+    + Tauri Store (Desktop)
+    + localStorage (Web)
+    + IndexedDB (Web)
+  end note
+  
+  component "REST API" as API
+  note right of API
+    **Endpoints:**
+    + GET /api/dashboard/sessions
+    + GET /api/dashboard/stats
+    + GET /api/dashboard/weak-keys
+    + GET /api/dashboard/achievements
+    + POST /api/dashboard/export
+  end note
+  
+  component "Background Sync" as Sync
+  note right of Sync
+    **Sync Components:**
+    + SyncEngine
+    + ConflictResolver
+    + QueueManager
+  end note
+}
+
+package "State Transformations" {
+  
+  component "Data Processors" as Processors
+  note right of Processors
+    **Processors:**
+    + ChartDataProcessor
+    + WeakKeyDetector
+    + AchievementEngine
+    + MetricsCalculator
+  end note
+  
+  component "Filters" as Filters
+  note right of Filters
+    **Filter Types:**
+    + DateRangeFilter
+    + ModeFilter
+    + PerformanceFilter
+    + SearchFilter
+  end note
+  
+  component "Aggregators" as Aggregators
+  note right of Aggregators
+    **Aggregators:**
+    + ProgressStatsAggregator
+    + TrendCalculator
+    + ConsistencyAnalyzer
+    + ImprovementTracker
+  end note
+}
+
+package "UI Components" {
+  
+  component "Dashboard" as Dashboard
+  note right of Dashboard
+    **Responsibilities:**
+    + subscribes to store
+    + dispatches actions
+    + renders based on state
+  end note
+  
+  component "Charts" as Charts
+  note right of Charts
+    **Chart Components:**
+    + WPMChart
+    + AccuracyChart
+    + PracticeFrequency
+    + ModeDistribution
+  end note
+  
+  component "Tables" as Tables
+  note right of Tables
+    **Table Components:**
+    + SessionHistory
+    + WeakKeyHeatmap
+    + Achievements
+  end note
+  
+  component "Controls" as Controls
+  note right of Controls
+    **Control Components:**
+    + FilterControls
+    + ExportControls
+    + ViewOptions
+  end note
+}
+
+' State Flow Relationships
+
+Store --> Actions : contains
+Store --> Middleware : uses
+Store --> Selectors : provides data to
+
+Actions --> Processors : triggers
+Actions --> Filters : applies
+Actions --> Aggregators : uses
+
+Processors --> Store : updates
+Filters --> Store : updates
+Aggregators --> Store : updates
+
+LocalStorage --> Store : provides initial data
+API --> Store : provides fresh data
+Sync --> Store : syncs changes
+
+Store --> Dashboard : provides state
+Store --> Charts : provides data
+Store --> Tables : provides data
+Store --> Controls : provides state
+
+Dashboard --> Actions : dispatches
+Charts --> Actions : dispatches
+Tables --> Actions : dispatches
+Controls --> Actions : dispatches
+
+' Data Flow Annotations
+
+note right of Store
+  **State Structure:**
+  - Immutable updates only
+  - Normalized data structure
+  - Computed values cached
+  - Error boundaries defined
+end note
+
+note right of Actions
+  **Action Types:**
+  - Pure functions
+  - Async support
+  - Error handling
+  - Optimistic updates
+end note
+
+note right of Middleware
+  **Middleware Chain:**
+  1. Logger (dev only)
+  2. Error handling
+  3. Persistence
+  4. Sync queue
+  5. Store update
+end note
+
+note right of Processors
+  **Data Processing:**
+  - Chart data downsampling
+  - Weak key analysis
+  - Achievement evaluation
+  - Metrics calculation
+end note
+
+' Flow Documentation
+
+note top of Store
+  **State Update Flow:**
+  1. User Interaction
+  2. Component dispatches action
+  3. Middleware processes action
+  4. Action updates store
+  5. Selectors compute derived state
+  6. Components re-render
+end note
+
+note bottom of Actions
+  **Error Handling Flow:**
+  1. API Error occurs
+  2. Error middleware catches
+  3. Store updates error state
+  4. UI shows error message
+  5. User retries action
+  6. Error state cleared
+  7. Normal flow resumes
+end note
+
+note left of Sync
+  **Background Sync Flow:**
+  1. Local changes detected
+  2. Sync middleware queues changes
+  3. Background sync to API
+  4. Conflict resolution
+  5. Store updated with resolved data
+  6. UI reflects changes
+end note
+
+@enduml
